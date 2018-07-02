@@ -1,0 +1,19 @@
+{
+    "name": "@cookielab.io/eslint-plugin-custom-rules",
+    "version": "0.1.0",
+    "description": "ESlint rules",
+    "keywords": [
+        "eslint",
+        "eslintplugin",
+        "eslint-plugin"
+    ],
+    "license": "MIT",
+    "main": "src/index.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/cookielab/eslint-plugin-custom-rules.git"
+    },
+    "engines": {
+        "node": ">=8.0.0"
+    }
+}
