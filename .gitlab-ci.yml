@@ -1,11 +1,6 @@
-stages:
-- test
-- release
-
 image: cookielab/nodejs:8
 
 publish:
-  stage: release
   tags:
     - docker
   before_script:
