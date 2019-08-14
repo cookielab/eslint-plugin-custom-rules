@@ -24,7 +24,8 @@ module.exports = {
                 type: "object",
                 properties: {
                     ignoreCase: {
-                        type: "boolean"
+                        type: "boolean",
+                        default: true
                     },
                     memberSyntaxSortOrder: {
                         type: "array",
@@ -35,8 +36,13 @@ module.exports = {
                         minItems: 5,
                         maxItems: 5
                     },
+                    ignoreDeclarationSort: {
+                        type: "boolean",
+                        default: false
+                    },
                     ignoreMemberSort: {
-                        type: "boolean"
+                        type: "boolean",
+                        default: false
                     }
                 },
                 additionalProperties: false
@@ -50,6 +56,7 @@ module.exports = {
 
         const configuration = context.options[0] || {},
             ignoreCase = configuration.ignoreCase || true,
+            ignoreDeclarationSort = configuration.ignoreDeclarationSort || false,
             ignoreMemberSort = configuration.ignoreMemberSort || false,
             memberSyntaxSortOrder = configuration.memberSyntaxSortOrder || ["all", "multiple", "single", "type", "none"],
             sourceCode = context.getSourceCode();
@@ -107,44 +114,48 @@ module.exports = {
 
         return {
             ImportDeclaration(node) {
-                if (previousDeclaration) {
-                    const currentMemberSyntaxGroupIndex = getMemberParameterGroupIndex(node),
-                        previousMemberSyntaxGroupIndex = getMemberParameterGroupIndex(previousDeclaration);
-                    let currentLocalMemberName = getFirstLocalMemberName(node),
-                        previousLocalMemberName = getFirstLocalMemberName(previousDeclaration);
+                if (!ignoreDeclarationSort) {
+                    if (previousDeclaration) {
+                        const currentMemberSyntaxGroupIndex = getMemberParameterGroupIndex(node),
+                            previousMemberSyntaxGroupIndex = getMemberParameterGroupIndex(previousDeclaration);
+                        let currentLocalMemberName = getFirstLocalMemberName(node),
+                            previousLocalMemberName = getFirstLocalMemberName(previousDeclaration);
 
-                    if (ignoreCase) {
-                        previousLocalMemberName = previousLocalMemberName && previousLocalMemberName.toLowerCase();
-                        currentLocalMemberName = currentLocalMemberName && currentLocalMemberName.toLowerCase();
+                        if (ignoreCase) {
+                            previousLocalMemberName = previousLocalMemberName && previousLocalMemberName.toLowerCase();
+                            currentLocalMemberName = currentLocalMemberName && currentLocalMemberName.toLowerCase();
+                        }
+
+                        /*
+                         * When the current declaration uses a different member syntax,
+                         * then check if the ordering is correct.
+                         * Otherwise, make a default string compare (like rule sort-vars to be consistent) of the first used local member name.
+                         */
+                        if (currentMemberSyntaxGroupIndex !== previousMemberSyntaxGroupIndex) {
+                            if (currentMemberSyntaxGroupIndex < previousMemberSyntaxGroupIndex) {
+                                context.report({
+                                    node,
+                                    message: "Expected '{{syntaxA}}' syntax before '{{syntaxB}}' syntax.",
+                                    data: {
+                                        syntaxA: memberSyntaxSortOrder[currentMemberSyntaxGroupIndex],
+                                        syntaxB: memberSyntaxSortOrder[previousMemberSyntaxGroupIndex]
+                                    }
+                                });
+                            }
+                        } else {
+                            if (previousLocalMemberName &&
+                                currentLocalMemberName &&
+                                currentLocalMemberName < previousLocalMemberName
+                            ) {
+                                context.report({
+                                    node,
+                                    message: "Imports should be sorted alphabetically."
+                                });
+                            }
+                        }
                     }
 
-                    /*
-                     * When the current declaration uses a different member syntax,
-                     * then check if the ordering is correct.
-                     * Otherwise, make a default string compare (like rule sort-vars to be consistent) of the first used local member name.
-                     */
-                    if (currentMemberSyntaxGroupIndex !== previousMemberSyntaxGroupIndex) {
-                        if (currentMemberSyntaxGroupIndex < previousMemberSyntaxGroupIndex) {
-                            context.report({
-                                node,
-                                message: "Expected '{{syntaxA}}' syntax before '{{syntaxB}}' syntax.",
-                                data: {
-                                    syntaxA: memberSyntaxSortOrder[currentMemberSyntaxGroupIndex],
-                                    syntaxB: memberSyntaxSortOrder[previousMemberSyntaxGroupIndex]
-                                }
-                            });
-                        }
-                    } else {
-                        if (previousLocalMemberName &&
-                            currentLocalMemberName &&
-                            currentLocalMemberName < previousLocalMemberName
-                        ) {
-                            context.report({
-                                node,
-                                message: "Imports should be sorted alphabetically."
-                            });
-                        }
-                    }
+                    previousDeclaration = node;
                 }
 
                 if (!ignoreMemberSort) {
@@ -193,8 +204,6 @@ module.exports = {
                         });
                     }
                 }
-
-                previousDeclaration = node;
             }
         };
     }
