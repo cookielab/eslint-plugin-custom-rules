@@ -115,6 +115,13 @@ module.exports = {
         return {
             ImportDeclaration(node) {
                 if (!ignoreDeclarationSort) {
+                    // There is at least one line between previous and the current import declaration.
+                    // It might be one empty line, multiple empty lines or some other code which causes
+                    // the rule handles new import declaration(s) as new block.
+                    if (previousDeclaration != null && previousDeclaration.loc.end.line < node.loc.start.line - 1) {
+                        previousDeclaration = null;
+                    }
+
                     if (previousDeclaration) {
                         const currentMemberSyntaxGroupIndex = getMemberParameterGroupIndex(node),
                             previousMemberSyntaxGroupIndex = getMemberParameterGroupIndex(previousDeclaration);
